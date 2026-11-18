@@ -326,93 +326,205 @@ export const flashLeft = (flash: Flash, now: number): number | null => {
   return left > 0 ? left : null
 }
 
-/** A run of a frame row: text, and a theme role for its colour (`tongue`, `mark`), or none. */
-export type Run = { text: string; role?: 'tongue' | 'mark' }
+/**
+ * A run of a frame row: text, and either a theme role for its colour (`tongue`, `mark`) or raw
+ * colours (`fg`, `bg`) where the pixel art paints itself.
+ */
+export type Run = { text: string; role?: 'tongue' | 'mark'; fg?: string; bg?: string }
 export type Frame = Run[][]
 
 const r = (text: string, role?: Run['role']): Run => (role ? { text, role } : { text })
-const plain = (...rows: string[]): Frame => rows.map(t => [r(t)])
+
+/** The pets' frames: a sound line over five rows of sprite, all 15 cells wide. */
+export const PET_W = 15
+export const PET_H = 6
 
 /**
- * The pet, four rows by 15 cells, two frames per state. An original drawing: pointed ears, a
- * muzzle and a tail curled over the back. Row 0 is the speech/sound line.
+ * A pose in pixels: ten rows of 15, two to a terminal row as half blocks (▀ ▄ █), each letter a
+ * colour of the animal's palette and `.` empty. `face` gives the five sprite rows' glyphs drawn
+ * on the fur: `L` and `R` the eyes, `N` the nose or mouth, a space none.
  */
-export const FRAMES: Record<PetState, [Frame, Frame]> = {
-  sleep: [
-    plain('          z    ', '  /^-^\\___     ', ' ( -ᴥ-     )@  ', '  ‾‾‾‾‾‾‾‾‾‾   '),
-    plain('          z z  ', '  /^-^\\___     ', ' ( -ᴥ-     )@  ', '  ‾‾‾‾‾‾‾‾‾‾   '),
-  ],
-  wag: [
-    plain('               ', '  /^-^\\     @  ', ' ( ^ᴥ^ )___/   ', '    UU   UU    '),
-    plain('               ', '  /^-^\\        ', ' ( ^ᴥ^ )___    ', '    UU   UU\\@  '),
-  ],
-  jump: [
-    plain('       !       ', '  /^-^\\     @  ', ' ( ^ᴥ^ )___/   ', '    UU   UU    '),
-    plain('  /^-^\\     @  ', ' ( ^ᴥ^ )___/   ', '    UU   UU    ', "    ''   ''    "),
-  ],
-  worried: [
-    plain('         ?     ', '  \\^-^\\        ', ' ( °ᴥ° )___@   ', '    UU   UU    '),
-    plain('         ?     ', '   /^-^/       ', '  ( °ᴥ°)___@   ', '    UU   UU    '),
-  ],
-  happy: [
-    [[r('     ♪         ')], [r('  /^-^\\     @  ')], [r(' ( ^ᴥ^ )___/   ')], [r('    '), r('U', 'tongue'), r('  UU UU   ')]],
-    [[r('        ♪      ')], [r('  /^-^\\     @  ')], [r(' ( ^ᴥ^ )___/   ')], [r('    '), r('U', 'tongue'), r('  UU UU   ')]],
-  ],
-  full: [
-    plain('          .    ', '  /^-^\\___     ', ' ( =ᴥ= )   )@  ', '  (_______)    '),
-    plain('          . .  ', '  /^-^\\___     ', ' ( =ᴥ= )   )@  ', '  (_______)    '),
-  ],
-  tired: [
-    plain('     ;         ', '               ', '  /^-^\\______  ', ' ( ˘ᴥ˘ )______@'),
-    plain('      ;        ', '               ', '  /^-^\\______  ', ' ( ˘ᴥ˘ )______@'),
-  ],
-  bark: [
-    [[r('  '), r('woof!', 'mark'), r('        ')], [r('  /^-^\\     @  ')], [r(' ( ^O^ )___/   ')], [r('    UU   UU    ')]],
-    [[r('  '), r('woof! woof!', 'mark'), r('  ')], [r('  /^-^\\     @  ')], [r(' ( ^o^ )___/   ')], [r('    UU   UU    ')]],
-  ],
-}
+type Pose = { px: string[]; face: string[] }
+type Animal = { pal: Record<string, string>; sit: Pose; wag: Pose; lie: Pose; nose: string; call: [string, string] }
 
-/** Rows padded to the pet's 15 cells. */
-const cat = (...rows: string[]): Frame => rows.map(t => [r(t.padEnd(15))])
+/** The eyes' and nose's ink. */
+const INK = '#3B2A20'
+
+const SIT_FACE = ['', '   L   R', '     N', '', '']
+const LIE_FACE = ['', '', '   L   R', '     N', '']
 
 /**
- * The cat beside the shiba, four rows by 15 cells, two frames per state, the same states as the
- * shiba's. An original drawing: pointed ears, whiskered face, front paws and a curling tail.
+ * The shiba: an original drawing, chibi and sitting. Pointed ears with cream insides, a cream
+ * muzzle and chest, pink cheeks and a tail curled over the back.
  */
-export const CAT_FRAMES: Record<PetState, [Frame, Frame]> = {
-  sleep: [
-    cat('         z', '  /\\_/\\', ' ( -.- )___', '  ‾‾‾‾‾‾‾‾‾~'),
-    cat('         z z', '  /\\_/\\', ' ( -.- )___', '  ‾‾‾‾‾‾‾‾‾~'),
-  ],
-  wag: [
-    cat('', '  /\\_/\\   (', ' ( o.o )__)', '  (")(")'),
-    cat('', '  /\\_/\\    )', ' ( o.o )__(', '  (")(")'),
-  ],
-  jump: [
-    cat('       !', '  /\\_/\\   (', ' ( ^.^ )__)', '  (")(")'),
-    cat('  /\\_/\\   (', ' ( ^.^ )__)', '  (")(")', "   '  '"),
-  ],
-  worried: [
-    cat('        ?', '  /\\_/\\', ' ( o.O )__)', '  (")(")'),
-    cat('         ?', '  /\\_/\\', ' ( O.o )__)', '  (")(")'),
-  ],
-  happy: [
-    cat('    ♪', '  /\\_/\\   (', ' ( ^w^ )__)', '  (")(")'),
-    cat('       ♪', '  /\\_/\\    )', ' ( ^w^ )__(', '  (")(")'),
-  ],
-  full: [
-    cat('         .', '  /\\_/\\__', ' ( =.= )  )~', '  (______)'),
-    cat('         . .', '  /\\_/\\__', ' ( =.= )  )~', '  (______)'),
-  ],
-  tired: [
-    cat('     ;', '', '  /\\_/\\______', ' ( -.- )______~'),
-    cat('      ;', '', '  /\\_/\\______', ' ( -.- )______~'),
-  ],
-  bark: [
-    [[r('  '), r('meow!', 'mark'), r('        ')], [r('  /\\_/\\   (    ')], [r(' ( ^O^ )__)    ')], [r('  (")(")       ')]],
-    [[r('  '), r('meow~ meow', 'mark'), r('   ')], [r('  /\\_/\\    )   ')], [r(' ( ^o^ )__(    ')], [r('  (")(")       ')]],
-  ],
+const SHIBA: Animal = {
+  pal: { o: '#E8913A', c: '#FFF1DC', p: '#FF96A5' },
+  nose: 'ᴥ',
+  call: ['woof!', 'woof! woof!'],
+  sit: {
+    face: SIT_FACE,
+    px: [
+      '.oo.....oo.....',
+      '.oco...oco.....',
+      'ooooooooooo....',
+      'ooooooooooo....',
+      'occccccccco.oo.',
+      'opcccccccpooco.',
+      '.occcccccoooo..',
+      '..occccooooooo.',
+      '..occccooooooo.',
+      '..cc.cc..cc.cc.',
+    ],
+  },
+  wag: {
+    face: SIT_FACE,
+    px: [
+      '.oo.....oo.....',
+      '.oco...oco.....',
+      'ooooooooooo....',
+      'ooooooooooo..o.',
+      'occccccccco.ooo',
+      'opcccccccpoooc.',
+      '.occcccccoooo..',
+      '..occccooooooo.',
+      '..occccooooooo.',
+      '..cc.cc..cc.cc.',
+    ],
+  },
+  lie: {
+    face: LIE_FACE,
+    px: [
+      '...............',
+      '...............',
+      '.oo.....oo.....',
+      '.oco...oco.....',
+      'ooooooooooo....',
+      'ooooooooooooooo',
+      'occccccccccoocc',
+      'opcccccccpooooo',
+      '.occcccccoooooo',
+      '..cc.cc..ccc.cc',
+    ],
+  },
 }
+
+/**
+ * The cat beside the shiba: an original drawing, a grey tabby with pink ears, a white muzzle,
+ * chest and paws, stripes on the forehead and back, and a tail held up.
+ */
+const CAT: Animal = {
+  pal: { g: '#A0A8BA', G: '#70778A', w: '#F6F3EE', r: '#F08CA0' },
+  nose: 'ω',
+  call: ['meow!', 'meow~ meow'],
+  sit: {
+    face: SIT_FACE,
+    px: [
+      '.g.......g.....',
+      '.rg.....gr.....',
+      'ggggGgGgggg....',
+      'ggggggggggg..g.',
+      'gwwwwwwwwwg..g.',
+      'grwwwwwwwrg..g.',
+      '.gwwwwwwwg..g..',
+      '..gwwwwgGgGg...',
+      '..gwwwwggggg...',
+      '..ww.ww..ww....',
+    ],
+  },
+  wag: {
+    face: SIT_FACE,
+    px: [
+      '.g.......g.....',
+      '.rg.....gr.....',
+      'ggggGgGgggg....',
+      'ggggggggggg...g',
+      'gwwwwwwwwwg..g.',
+      'grwwwwwwwrg..g.',
+      '.gwwwwwwwg..g..',
+      '..gwwwwgGgGg...',
+      '..gwwwwggggg...',
+      '..ww.ww..ww....',
+    ],
+  },
+  lie: {
+    face: LIE_FACE,
+    px: [
+      '...............',
+      '...............',
+      '.g.......g.....',
+      '.rg.....gr.....',
+      'ggggGgGgggg....',
+      'gggggggggggGgGg',
+      'gwwwwwwwwwggggg',
+      'grwwwwwwwrggggg',
+      '.gwwwwwwwgggggg',
+      '..ww.ww..ww.wgg',
+    ],
+  },
+}
+
+/** One terminal row of a pose: two pixel rows as half blocks, the face's glyphs on the fur. */
+const paintRow = (pal: Record<string, string>, top: string, bottom: string, glyphs: string[]): Run[] => {
+  const runs: Run[] = []
+  for (let i = 0; i < PET_W; i++) {
+    const t = top[i] ?? '.'
+    const b = bottom[i] ?? '.'
+    const g = glyphs[i] ?? ' '
+    const cell: Run =
+      g !== ' '
+        ? { text: g, fg: INK, bg: pal[t] ?? pal[b] }
+        : t === '.' && b === '.'
+          ? { text: ' ' }
+          : b === '.'
+            ? { text: '▀', fg: pal[t] }
+            : t === '.'
+              ? { text: '▄', fg: pal[b] }
+              : t === b
+                ? { text: '█', fg: pal[t] }
+                : { text: '▀', fg: pal[t], bg: pal[b] }
+    const last = runs[runs.length - 1]
+    if (last && last.fg === cell.fg && last.bg === cell.bg) last.text += cell.text
+    else runs.push(cell)
+  }
+  return runs
+}
+
+/**
+ * A frame: the sound line, then the pose with these eyes and nose. With no sound line the pose
+ * rises a row into its place, for the second frame of a jump.
+ */
+const paint = (a: Animal, pose: Pose, l: string, rt: string, n: string, sound: Run[] | null): Frame => {
+  const sprite: Frame = []
+  for (let row = 0; row < PET_H - 1; row++) {
+    const face = [...(pose.face[row] ?? '').replace('L', l).replace('R', rt).replace('N', n)]
+    sprite.push(paintRow(a.pal, pose.px[row * 2], pose.px[row * 2 + 1], face))
+  }
+  return sound ? [sound, ...sprite] : [...sprite, [r(' '.repeat(PET_W))]]
+}
+
+const line = (text: string): Run[] => [r(text.padEnd(PET_W))]
+const loud = (text: string): Run[] => [r('  '), r(text, 'mark'), r(' '.repeat(PET_W - 2 - text.length))]
+
+/** Every state's two frames for one animal. */
+const framesOf = (a: Animal): Record<PetState, [Frame, Frame]> => {
+  const f = (pose: Pose, l: string, rt: string, sound: Run[] | null, n = a.nose) => paint(a, pose, l, rt, n, sound)
+  return {
+    sleep: [f(a.lie, '-', '-', line('          z')), f(a.lie, '-', '-', line('          z z'))],
+    wag: [f(a.sit, '•', '•', line('')), f(a.wag, '•', '•', line(''))],
+    jump: [f(a.sit, '^', '^', line('       !')), f(a.wag, '^', '^', null)],
+    worried: [f(a.sit, '°', '°', line('         ?')), f(a.sit, '°', '°', line('          ?'))],
+    happy: [f(a.sit, '^', '^', line('     ♪')), f(a.wag, '^', '^', line('        ♪'))],
+    full: [f(a.sit, '=', '=', line('          .')), f(a.sit, '=', '=', line('          . .'))],
+    tired: [f(a.lie, '˘', '˘', line('     ;')), f(a.lie, '˘', '˘', line('      ;'))],
+    bark: [f(a.sit, '>', '<', loud(a.call[0]), 'O'), f(a.wag, '>', '<', loud(a.call[1]), 'o')],
+  }
+}
+
+/** The shiba, two frames per state, six rows of 15 cells. */
+export const FRAMES: Record<PetState, [Frame, Frame]> = framesOf(SHIBA)
+
+/** The cat beside the shiba, the same states and size as the shiba's. */
+export const CAT_FRAMES: Record<PetState, [Frame, Frame]> = framesOf(CAT)
 
 /** How fast each state's two frames alternate, in ms. */
 export const FRAME_MS: Record<PetState, number> = {

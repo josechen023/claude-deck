@@ -105,10 +105,10 @@ test('the reminder barks over everything but an error', () => {
   expect(petStateOf({ ...calm, reminder: ['backup'], usage: { pct: 99, limits: [{ kind: 'seven_day', pct: 99, resetsAt: null }] } })).toBe('bark')
 })
 
-test('every shiba and cat frame is four rows of 15 cells', () => {
+test('every shiba and cat frame is six rows of 15 cells', () => {
   for (const [state, frames] of [...Object.entries(FRAMES), ...Object.entries(CAT_FRAMES)]) {
     for (const frame of frames) {
-      expect(frame.length).toBe(4)
+      expect(frame.length).toBe(6)
       for (const row of frame) {
         const width = [...row.map(r => r.text).join('')].length
         if (width !== 15) throw new Error(`${state} row "${row.map(r => r.text).join('')}" is ${width} cells`)

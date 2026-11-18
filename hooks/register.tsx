@@ -51,7 +51,7 @@ import {
 } from './core'
 import { DEFAULT_COSTS, addCost, costDelta, mergeCosts, normalizeCosts, weekCost } from './core'
 import { addRequest, cacheHitPct, fmtTokens, fmtUsd, shortModel, usdPerHour } from './core'
-import { CAT_FACE, CELL_W, KEEP_DAYS, LOG_MAX, headerDate, hhmm, pushLog, toolLabel, dayKeyOf, dayLabel, gridDaysFor, monthDay, paceOf, shiftDay, timePct, trackedSpan } from './core'
+import { CAT_FACE, CELL_W, KEEP_DAYS, PET_H, PET_W, LOG_MAX, headerDate, hhmm, pushLog, toolLabel, dayKeyOf, dayLabel, gridDaysFor, monthDay, paceOf, shiftDay, timePct, trackedSpan } from './core'
 import type { Cell, Config, PetState } from './core'
 
 const PANE = 'deck'
@@ -461,8 +461,8 @@ export const register: Register = (on, options) => {
         <els.Client
           key={kind}
           module="./pet.tsx"
-          width={15}
-          height={4}
+          width={PET_W}
+          height={PET_H}
           props={{ state, motion: cfg.motion, color, tongue: C.missed, mark: C.warn, mono, kind }}
         />
       ) : (

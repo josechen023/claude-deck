@@ -1,4 +1,4 @@
-// The shiba, animated on the surface's own frame clock (as Flightdeck's rail.tsx draws its packets):
+// The shiba (or the cat) in half-block pixel art, animated on the surface's own frame clock (as Flightdeck's rail.tsx draws its packets):
 // only this region redraws, the pane does not. With `motion` off it rests on its first frame.
 import type { ClientModule } from 'claude-code'
 
@@ -47,7 +47,7 @@ const Pet: ClientModule<Props, State> = (props, surface) => {
         <Box flexShrink={0}>
           <Text {...face}>
             {row.map(run => (
-              <Text color={colorOf(run.role)} {...face}>
+              <Text color={run.fg ?? colorOf(run.role)} backgroundColor={run.bg} {...face}>
                 {run.text}
               </Text>
             ))}

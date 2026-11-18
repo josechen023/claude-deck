@@ -56,7 +56,7 @@ Requires Claude Code 2.1.289 or later. The pane docks beside the transcript in f
 
 ## What it shows
 
-1. **Pet**: an animated ASCII shiba (and a cat, when the pane is wide enough). It sleeps when idle,
+1. **Pet**: an animated pixel-art shiba (and a grey tabby cat, when the pane is wide enough). It sleeps when idle,
    wags while Claude works, jumps when a task-list item is completed, tilts its head after an error,
    is happy once all daily jobs are done, looks full past 85% context, lies down past 85% of a rate
    limit, and barks about pending jobs from the reminder hour. It levels up with every task-list item
