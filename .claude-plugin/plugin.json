@@ -1,0 +1,72 @@
+{
+  "name": "deck",
+  "version": "0.1.0",
+  "description": "Deck: a read-only sidebar with a shiba (and a cat), a grid of your own daily jobs, task-list progress, usage and rate limits, model tokens and estimated cost, and the current turn. Forked from Flightdeck by Stephen Casella.",
+  "author": {
+    "name": "joe20201830",
+    "url": "https://github.com/joe20201830"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/joe20201830/claude-deck",
+  "keywords": [
+    "claude-code",
+    "claude-code-mod",
+    "sidebar",
+    "tui"
+  ],
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "petName": {
+      "title": "Pet name",
+      "description": "Name shown under the shiba",
+      "type": "string",
+      "default": "SHIBA"
+    },
+    "catName": {
+      "title": "Cat name",
+      "description": "Name shown beside the shiba's for the cat",
+      "type": "string",
+      "default": "NEKO"
+    },
+    "motion": {
+      "title": "Motion",
+      "description": "Animate the shiba, or keep it still",
+      "type": "string",
+      "options": [
+        "on",
+        "off"
+      ],
+      "default": "on"
+    },
+    "timeZone": {
+      "title": "Time zone",
+      "description": "IANA time zone whose midnight starts a new day for the daily grid",
+      "type": "string",
+      "default": "UTC"
+    },
+    "reminderHour": {
+      "title": "Reminder hour",
+      "description": "Hour (0-23, in the time zone above) from which the shiba barks about jobs still pending today; -1 turns the reminder off",
+      "type": "number",
+      "default": 16
+    },
+    "jobs": {
+      "title": "Daily jobs",
+      "description": "Your daily jobs, as name=pattern entries separated by ; (up to 6). A job counts as done for the day when Claude runs a Bash command matching its pattern (a case-insensitive regular expression) and the command succeeds. Example: backup=scripts/backup\\.sh; report=make report",
+      "type": "string",
+      "default": ""
+    },
+    "paneColumns": {
+      "title": "Pane width",
+      "description": "Columns the pane asks for when docked beside the fullscreen transcript, 32 or more",
+      "type": "number",
+      "default": 50
+    },
+    "openOnStart": {
+      "title": "Open on start",
+      "description": "Open the pane when a session starts",
+      "type": "boolean",
+      "default": true
+    }
+  }
+}

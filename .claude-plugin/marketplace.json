@@ -1,0 +1,13 @@
+{
+  "name": "claude-deck",
+  "description": "Deck: a read-only sidebar mod for Claude Code with pets, daily jobs, usage and cost.",
+  "owner": {
+    "name": "joe20201830"
+  },
+  "plugins": [
+    {
+      "name": "deck",
+      "source": "./"
+    }
+  ]
+}
