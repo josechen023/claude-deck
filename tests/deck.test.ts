@@ -51,6 +51,8 @@ import {
   todayLine,
   wallClock,
   windowsOf,
+  parseTaskEnds,
+  taskOutcome,
 } from '../hooks/core'
 import type { PetInputs } from '../hooks/core'
 import type { Daily } from '../types'
@@ -105,7 +107,7 @@ test('the reminder barks over everything but an error', () => {
   expect(petStateOf({ ...calm, reminder: ['backup'], usage: { pct: 99, limits: [{ kind: 'seven_day', pct: 99, resetsAt: null }] } })).toBe('bark')
 })
 
-test('every shiba and cat frame is six rows of 15 cells', () => {
+test('every quokka and wombat frame is six rows of 15 cells', () => {
   for (const [state, frames] of [...Object.entries(FRAMES), ...Object.entries(CAT_FRAMES)]) {
     for (const frame of frames) {
       expect(frame.length).toBe(6)
@@ -365,7 +367,7 @@ test('a successful backup run is recorded for today, and the pane never shows th
     expect(all).toContain('no task list')
     expect(all).toContain('SESSION LOG')
     expect(all).toContain('10:00  backup ✓ done')
-    expect(all).toContain('SHIBA & NEKO')
+    expect(all).toContain('QUOKKA & WOMBAT')
     expect(all).toContain('D E C K')
     expect(all).toContain('MODEL')
     expect(all).toContain('daily 1/3')
@@ -395,13 +397,28 @@ test('the history from the store draws the grid, and the reminder barks from 16:
   await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
 
   const before = await $.ui.mount({ ...PANE('dock'), surface: 'terminal' })
-  expect(await textOf(before)).not.toContain('woof!')
+  expect(await textOf(before)).not.toContain('hey!')
   expect(await textOf(before)).toContain('Lv 2')
   await before.unmount()
 
   await clock.advance(HOUR) // 16:00 local
   const after = await $.ui.mount({ ...PANE('dock'), surface: 'terminal' })
-  expect(await textOf(after)).toContain('woof! backup, sync are still pending')
+  expect(await textOf(after)).toContain('hey! backup, sync are still pending')
+  await after.unmount()
+})
+
+test('a job another session records after this one started shows within a minute', OPTS, async ($, on) => {
+  const { clock, store } = engine(on, SGT_MIDNIGHT + 16 * HOUR)
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  const before = await $.ui.mount({ ...PANE('dock'), surface: 'terminal' })
+  expect(await textOf(before)).toContain('hey! report, backup, sync are still pending')
+  await before.unmount()
+
+  // A second session writes the shared store; this one's own state has not seen it.
+  store.daily = { days: { '2026-11-18': { backup: 'done', sync: 'done' } } }
+  await clock.advance(60_000)
+  const after = await $.ui.mount({ ...PANE('dock'), surface: 'terminal' })
+  expect(await textOf(after)).toContain('hey! report is still pending')
   await after.unmount()
 })
 
@@ -443,7 +460,7 @@ test('inline (not fullscreen) the pane is a two-row summary', OPTS, async ($, on
     const root = (await ui.drawn()) as { children?: unknown[] }
     expect((root.children ?? []).filter(Boolean).length).toBe(2)
     const all = await textOf(ui)
-    expect(all).toContain('SHIBA')
+    expect(all).toContain('QUOKKA')
     expect(all).toContain('no task list')
     expect(all).toContain('today 0/3')
     await ui.unmount()
@@ -468,4 +485,76 @@ test('no jobs by default: the grid says so and the pet is not happy for nothing'
   expect(all).toContain('asleep')
   expect((await $.command.run(deck('done backup'))).text).toContain('No daily jobs are set')
   await ui.unmount()
+})
+
+// ---------------------------------------------------------------- background commands
+
+const notification = (id: string, status: string, code: number | null) =>
+  `<task-notification>\n<task-id>${id}</task-id>\n<status>${status}</status>\n<summary>Background command "x" ${status}${code === null ? '' : ` (exit code ${code})`}</summary>\n</task-notification>`
+
+test('task notifications: ids, status and exit code', () => {
+  expect(parseTaskEnds(notification('b1', 'completed', 0))).toEqual([{ id: 'b1', status: 'completed', exitCode: 0 }])
+  expect(parseTaskEnds(notification('b1', 'completed', 0) + notification('b2', 'failed', 2)).map(t => t.id)).toEqual(['b1', 'b2'])
+  expect(parseTaskEnds('hello')).toEqual([])
+  expect(taskOutcome({ id: 'x', status: 'completed', exitCode: 0 })).toBe('done')
+  expect(taskOutcome({ id: 'x', status: 'completed', exitCode: 1 })).toBe('failed')
+  expect(taskOutcome({ id: 'x', status: 'failed', exitCode: null })).toBe('failed')
+  expect(taskOutcome({ id: 'x', status: 'killed', exitCode: null })).toBe('stopped')
+})
+
+const bgEngine = (on: On) => {
+  const env = engine(on, SGT_MIDNIGHT + 10 * HOUR)
+  on('tool.call', () => ({ result: { stdout: '', stderr: '', interrupted: false, backgroundTaskId: 'bg42' } }))
+  on('prompt.submit', (_$, e) => ({ text: e.text }))
+  return env
+}
+const fromTask = (text: string) => ({ text, wait: false, origin: { kind: 'task-notification' as const } })
+
+test('a background job counts only when it ends, and the pane shows it running meanwhile', OPTS, async ($, on) => {
+  const { clock, store } = bgEngine(on)
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  await $.tool.call({ tool: 'Bash', command: BACKUP, run_in_background: true })
+  await clock.advance(0)
+  expect(store.daily).toBeUndefined()
+
+  const running = await $.ui.mount({ ...PANE('dock'), surface: 'terminal' })
+  const all = await textOf(running)
+  expect(all).toContain('BACKGROUND')
+  expect(all).toContain('⟳ backup')
+  expect(all).toContain('bg 1')
+  expect(all).not.toContain('backup.sh')
+  await running.unmount()
+
+  await $.prompt.submit(fromTask(notification('bg42', 'completed', 0)))
+  await clock.advance(0)
+  expect(store.daily).toEqual({ days: { '2026-11-18': { backup: 'done' } } })
+  const after = await $.ui.mount({ ...PANE('dock'), surface: 'terminal' })
+  expect(await textOf(after)).not.toContain('BACKGROUND')
+  await after.unmount()
+})
+
+test('a background job that fails marks the day failed; one stopped marks nothing', OPTS, async ($, on) => {
+  const { clock, store } = bgEngine(on)
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  await $.tool.call({ tool: 'Bash', command: BACKUP, run_in_background: true })
+  await clock.advance(0)
+  await $.prompt.submit(fromTask(notification('bg42', 'completed', 1)))
+  await clock.advance(0)
+  expect(store.daily).toEqual({ days: { '2026-11-18': { backup: 'failed' } } })
+
+  await $.tool.call({ tool: 'Bash', command: 'make report', run_in_background: true })
+  await clock.advance(0)
+  await $.prompt.submit(fromTask(notification('bg42', 'killed', null)))
+  await clock.advance(0)
+  expect((store.daily as Daily).days['2026-11-18']?.report).toBeUndefined()
+})
+
+test('a typed prompt that looks like a notification is ignored', OPTS, async ($, on) => {
+  const { clock, store } = bgEngine(on)
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  await $.tool.call({ tool: 'Bash', command: BACKUP, run_in_background: true })
+  await clock.advance(0)
+  await $.prompt.submit({ text: notification('bg42', 'completed', 0), wait: false, origin: { kind: 'composer' } })
+  await clock.advance(0)
+  expect(store.daily).toBeUndefined()
 })

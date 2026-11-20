@@ -85,8 +85,8 @@ export const parseConfig = (o: Readonly<Record<string, unknown>>): Config => {
   const num = (k: string, d: number) => (typeof o[k] === 'number' && Number.isFinite(o[k]) ? (o[k] as number) : d)
   const hour = Math.round(num('reminderHour', 16))
   return {
-    petName: str('petName', 'SHIBA').slice(0, 16),
-    catName: str('catName', 'NEKO').slice(0, 16),
+    petName: str('petName', 'QUOKKA').slice(0, 16),
+    catName: str('catName', 'WOMBAT').slice(0, 16),
     motion: o.motion !== 'off',
     timeZone: str('timeZone', 'UTC'),
     reminderHour: hour >= 0 && hour <= 23 ? hour : null,
@@ -350,45 +350,47 @@ type Animal = { pal: Record<string, string>; sit: Pose; wag: Pose; lie: Pose; no
 /** The eyes' and nose's ink. */
 const INK = '#3B2A20'
 
-const SIT_FACE = ['', '   L   R', '     N', '', '']
-const LIE_FACE = ['', '', '   L   R', '     N', '']
+// Eyes on the second row; the nose is pixels, the mouth on the fourth row below it.
+const SIT_FACE = ['', '   L   R', '', '     N', '']
+// Lying down, the head sits a row lower and the mouth would land on the paws: eyes only.
+const LIE_FACE = ['', '', '   L   R', '', '']
 
 /**
- * The shiba: an original drawing, chibi and sitting. Pointed ears with cream insides, a cream
- * muzzle and chest, pink cheeks and a tail curled over the back.
+ * The quokka: an original drawing, chibi and sitting up. Round ears with dark insides, a small
+ * light muzzle with a button nose, pink cheeks, a light belly, big feet and a long tail on the ground.
  */
-const SHIBA: Animal = {
-  pal: { o: '#E8913A', c: '#FFF1DC', p: '#FF96A5' },
-  nose: 'ᴥ',
-  call: ['woof!', 'woof! woof!'],
+const QUOKKA: Animal = {
+  pal: { b: '#A87A50', l: '#EBD3B0', d: '#7A5236', k: INK, p: '#FF96A5' },
+  nose: 'ᴗ',
+  call: ['hey!', 'hey! hey!'],
   sit: {
     face: SIT_FACE,
     px: [
-      '.oo.....oo.....',
-      '.oco...oco.....',
-      'ooooooooooo....',
-      'ooooooooooo....',
-      'occccccccco.oo.',
-      'opcccccccpooco.',
-      '.occcccccoooo..',
-      '..occccooooooo.',
-      '..occccooooooo.',
-      '..cc.cc..cc.cc.',
+      '.bb.....bb.....',
+      'bdbb...bbdb....',
+      'bbbbbbbbbbb....',
+      'bbbbbbbbbbb....',
+      'bbbllkllbbb....',
+      'bpblllllbpb....',
+      '.bbblllbbb.....',
+      '..bbbbbbbbb....',
+      '..bbllbbbbbb...',
+      '..ll.ll.bbbbbbb',
     ],
   },
   wag: {
     face: SIT_FACE,
     px: [
-      '.oo.....oo.....',
-      '.oco...oco.....',
-      'ooooooooooo....',
-      'ooooooooooo..o.',
-      'occccccccco.ooo',
-      'opcccccccpoooc.',
-      '.occcccccoooo..',
-      '..occccooooooo.',
-      '..occccooooooo.',
-      '..cc.cc..cc.cc.',
+      '.bb.....bb.....',
+      'bdbb...bbdb....',
+      'bbbbbbbbbbb....',
+      'bbbbbbbbbbb....',
+      'bbbllkllbbb....',
+      'bpblllllbpb....',
+      '.bbblllbbb.....',
+      '..bbbbbbbbb....',
+      '..bbllbbbbbb.bb',
+      '..ll.ll.bbbbb..',
     ],
   },
   lie: {
@@ -396,54 +398,54 @@ const SHIBA: Animal = {
     px: [
       '...............',
       '...............',
-      '.oo.....oo.....',
-      '.oco...oco.....',
-      'ooooooooooo....',
-      'ooooooooooooooo',
-      'occccccccccoocc',
-      'opcccccccpooooo',
-      '.occcccccoooooo',
-      '..cc.cc..ccc.cc',
+      '.bb.....bb.....',
+      'bdbb...bbdb....',
+      'bbbbbbbbbbbbbb.',
+      'bbbbbbbbbbbbbbb',
+      'bbbllkllbbbbbbb',
+      'bpblllllbpbbbbb',
+      '.bbblllbbbbbbbb',
+      '..ll.ll..lll.bb',
     ],
   },
 }
 
 /**
- * The cat beside the shiba: an original drawing, a grey tabby with pink ears, a white muzzle,
- * chest and paws, stripes on the forehead and back, and a tail held up.
+ * The wombat beside the quokka: an original drawing, low and chunky. Small round ears, a big
+ * dark nose on a pale muzzle, pink cheeks, stubby legs, and flat as a loaf when lying down.
  */
-const CAT: Animal = {
-  pal: { g: '#A0A8BA', G: '#70778A', w: '#F6F3EE', r: '#F08CA0' },
-  nose: 'ω',
-  call: ['meow!', 'meow~ meow'],
+const WOMBAT: Animal = {
+  pal: { m: '#8E8174', n: '#CDBFAE', e: '#5E534A', k: INK, p: '#FF96A5' },
+  nose: 'ᴗ',
+  call: ['hmph!', 'hmph~ hmph'],
   sit: {
     face: SIT_FACE,
     px: [
-      '.g.......g.....',
-      '.rg.....gr.....',
-      'ggggGgGgggg....',
-      'ggggggggggg..g.',
-      'gwwwwwwwwwg..g.',
-      'grwwwwwwwrg..g.',
-      '.gwwwwwwwg..g..',
-      '..gwwwwgGgGg...',
-      '..gwwwwggggg...',
-      '..ww.ww..ww....',
+      '...............',
+      '.mm.....mm.....',
+      'memmmmmmmem....',
+      'mmmmmmmmmmmmm..',
+      'mmnnkkknnmmmmm.',
+      'mpnnnknnnpmmmm.',
+      'mmnnnnnnnmmmmm.',
+      '.mmnnnnnmmmmmm.',
+      '.mmmmmmmmmmmmm.',
+      '.nn.nn...nn.nn.',
     ],
   },
   wag: {
     face: SIT_FACE,
     px: [
-      '.g.......g.....',
-      '.rg.....gr.....',
-      'ggggGgGgggg....',
-      'ggggggggggg...g',
-      'gwwwwwwwwwg..g.',
-      'grwwwwwwwrg..g.',
-      '.gwwwwwwwg..g..',
-      '..gwwwwgGgGg...',
-      '..gwwwwggggg...',
-      '..ww.ww..ww....',
+      '...............',
+      '.mm.....mm.....',
+      'memmmmmmmem....',
+      'mmmmmmmmmmmmm..',
+      'mmnnkkknnmmmmm.',
+      'mpnnnknnnpmmmm.',
+      'mmnnnnnnnmmmmm.',
+      '.mmnnnnnmmmmmm.',
+      '.mmmmmmmmmmmmmm',
+      '.nn.nn...nn.nn.',
     ],
   },
   lie: {
@@ -451,14 +453,14 @@ const CAT: Animal = {
     px: [
       '...............',
       '...............',
-      '.g.......g.....',
-      '.rg.....gr.....',
-      'ggggGgGgggg....',
-      'gggggggggggGgGg',
-      'gwwwwwwwwwggggg',
-      'grwwwwwwwrggggg',
-      '.gwwwwwwwgggggg',
-      '..ww.ww..ww.wgg',
+      '...............',
+      '.mm.....mm.....',
+      'memmmmmmmemmmm.',
+      'mmmmmmmmmmmmmmm',
+      'mmnnkkknnmmmmmm',
+      'mpnnnknnnpmmmmm',
+      '.mnnnnnnnmmmmmm',
+      '..nn.nn...nn.nn',
     ],
   },
 }
@@ -512,7 +514,7 @@ const framesOf = (a: Animal): Record<PetState, [Frame, Frame]> => {
     sleep: [f(a.lie, '-', '-', line('          z')), f(a.lie, '-', '-', line('          z z'))],
     wag: [f(a.sit, '•', '•', line('')), f(a.wag, '•', '•', line(''))],
     jump: [f(a.sit, '^', '^', line('       !')), f(a.wag, '^', '^', null)],
-    worried: [f(a.sit, '°', '°', line('         ?')), f(a.sit, '°', '°', line('          ?'))],
+    worried: [f(a.sit, '°', '°', line('         ?'), '~'), f(a.sit, '°', '°', line('          ?'), '~')],
     happy: [f(a.sit, '^', '^', line('     ♪')), f(a.wag, '^', '^', line('        ♪'))],
     full: [f(a.sit, '=', '=', line('          .')), f(a.sit, '=', '=', line('          . .'))],
     tired: [f(a.lie, '˘', '˘', line('     ;')), f(a.lie, '˘', '˘', line('      ;'))],
@@ -520,11 +522,11 @@ const framesOf = (a: Animal): Record<PetState, [Frame, Frame]> => {
   }
 }
 
-/** The shiba, two frames per state, six rows of 15 cells. */
-export const FRAMES: Record<PetState, [Frame, Frame]> = framesOf(SHIBA)
+/** The quokka, two frames per state, six rows of 15 cells. */
+export const FRAMES: Record<PetState, [Frame, Frame]> = framesOf(QUOKKA)
 
-/** The cat beside the shiba, the same states and size as the shiba's. */
-export const CAT_FRAMES: Record<PetState, [Frame, Frame]> = framesOf(CAT)
+/** The wombat beside the quokka, the same states and size as the quokka's. */
+export const CAT_FRAMES: Record<PetState, [Frame, Frame]> = framesOf(WOMBAT)
 
 /** How fast each state's two frames alternate, in ms. */
 export const FRAME_MS: Record<PetState, number> = {
@@ -540,26 +542,26 @@ export const FRAME_MS: Record<PetState, number> = {
 
 /** The face alone, for the inline summary and where the animation cannot draw. */
 export const FACE: Record<PetState, string> = {
+  sleep: '-ᴗ-',
+  wag: '•ᴗ•',
+  jump: '^ᴗ^',
+  worried: '°~°',
+  happy: '^ᴗ^',
+  full: '=ᴗ=',
+  tired: '˘ᴗ˘',
+  bark: '>O<',
+}
+
+/** The wombat's face alone, where the animation cannot draw. */
+export const CAT_FACE: Record<PetState, string> = {
   sleep: '-ᴥ-',
-  wag: '^ᴥ^',
+  wag: '•ᴥ•',
   jump: '^ᴥ^',
   worried: '°ᴥ°',
   happy: '^ᴥ^',
   full: '=ᴥ=',
   tired: '˘ᴥ˘',
-  bark: '^O^',
-}
-
-/** The cat's face alone, where the animation cannot draw. */
-export const CAT_FACE: Record<PetState, string> = {
-  sleep: '-.-',
-  wag: 'o.o',
-  jump: '^.^',
-  worried: 'o.O',
-  happy: '^w^',
-  full: '=.=',
-  tired: '-.-',
-  bark: '^O^',
+  bark: '>ᴥ<',
 }
 
 /** One word for the state, shown beside the name where there is no animation to say it. */
@@ -571,7 +573,7 @@ export const MOOD: Record<PetState, string> = {
   happy: 'happy',
   full: 'full',
   tired: 'tired',
-  bark: 'woof!',
+  bark: 'hey!',
 }
 
 // ---------------------------------------------------------------- usage
@@ -702,6 +704,35 @@ export const weekCost = (c: Costs, today: string): { usd: number; days: number }
 
 /** What a new cost reading adds: the growth since `seen`, or nothing when the session's figure went down (after /clear). */
 export const costDelta = (usd: number, seen: number | null) => (seen === null ? usd : Math.max(0, usd - seen))
+
+// ---------------------------------------------------------------- background commands
+
+export type TaskEnd = { id: string; status: string; exitCode: number | null }
+
+/**
+ * The background tasks a task-notification prompt reports as ended: each `<task-notification>`
+ * block's task id, status and, from its summary, the exit code when it names one.
+ */
+export const parseTaskEnds = (text: string): TaskEnd[] => {
+  const blocks = [...text.matchAll(/<task-notification>([\s\S]*?)<\/task-notification>/g)].map(m => m[1] ?? '')
+  const out: TaskEnd[] = []
+  for (const b of blocks.length > 0 ? blocks : [text]) {
+    const id = /<task-id>([^<]+)<\/task-id>/.exec(b)?.[1]?.trim()
+    if (!id) continue
+    const status = (/<status>([^<]+)<\/status>/.exec(b)?.[1] ?? '').trim().toLowerCase()
+    const code = /exit code (-?\d+)/i.exec(/<summary>([\s\S]*?)<\/summary>/.exec(b)?.[1] ?? '')?.[1]
+    out.push({ id, status, exitCode: code === undefined ? null : Number(code) })
+  }
+  return out
+}
+
+/** What an ended task means for its jobs: done on success, nothing when it was stopped, else failed. */
+export const taskOutcome = (t: TaskEnd): 'done' | 'failed' | 'stopped' =>
+  t.status === 'killed' || t.status === 'stopped'
+    ? 'stopped'
+    : t.status === 'completed' && (t.exitCode === null || t.exitCode === 0)
+      ? 'done'
+      : 'failed'
 
 // ---------------------------------------------------------------- session log
 

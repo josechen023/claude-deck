@@ -65,6 +65,12 @@ export type Spend = {
  */
 export type Costs = { days: Record<string, number>; total: number; since: string | null }
 
+/**
+ * Background commands still running, keyed by the engine's task id: the daily jobs each one runs
+ * (none for any other command) and when it started. Never the command itself.
+ */
+export type Background = Record<string, { jobs: JobName[]; startedAt: number }>
+
 /** A short-lived pet reaction: a jump after a completed item, a worried tilt after an error. */
 export type Flash = { kind: 'jump' | 'error'; at: number } | null
 
@@ -82,6 +88,7 @@ declare module 'claude-code' {
       costs: Costs
       /** This session's cost when last added to `costs`, so each reading adds only what is new. */
       costSeen: number | null
+      bg: Background
     }
   }
 }

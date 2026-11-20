@@ -1,6 +1,6 @@
 # Deck
 
-A read-only sidebar mod for [Claude Code](https://claude.com/claude-code): a shiba and a cat whose moods
+A read-only sidebar mod for [Claude Code](https://claude.com/claude-code): a quokka and a wombat whose moods
 follow your session, a grid of the daily jobs you run with Claude, task-list progress, context and
 rate-limit usage, model tokens with an estimated cost, and the current turn — all kept beside the
 transcript while you work.
@@ -9,7 +9,7 @@ transcript while you work.
         ━━  D E C K  ━━
    Wed 11/18 15:24 · WORKING · daily 2/3
 ╭────────────────────────────────────────────╮
-│ SHIBA & NEKO                          Lv 3 │
+│ QUOKKA & WOMBAT                       Lv 3 │
 │           z            z                   │
 │   /^-^\___       /\_/\                     │
 │  ( -ᴥ-     )@   ( -.- )___                 │
@@ -56,10 +56,10 @@ Requires Claude Code 2.1.289 or later. The pane docks beside the transcript in f
 
 ## What it shows
 
-1. **Pet**: an animated pixel-art shiba (and a grey tabby cat, when the pane is wide enough). It sleeps when idle,
+1. **Pet**: an animated pixel-art quokka (and a wombat, when the pane is wide enough). It sleeps when idle,
    wags while Claude works, jumps when a task-list item is completed, tilts its head after an error,
    is happy once all daily jobs are done, looks full past 85% context, lies down past 85% of a rate
-   limit, and barks about pending jobs from the reminder hour. It levels up with every task-list item
+   limit, and calls out ("hey!") about pending jobs from the reminder hour. It levels up with every task-list item
    completed, across sessions.
 2. **DAILY**: your daily jobs as a grid of days, oldest left and today right. Green: the job ran
    successfully that day. Red: not run, or it failed. Gray: today, still pending.
@@ -70,7 +70,10 @@ Requires Claude Code 2.1.289 or later. The pane docks beside the transcript in f
    included); the prompt-cache hit rate; and the estimated cost for this session, the last 7 days and
    the total since tracking began.
 6. **TURN**: whether a turn is running, how long it has taken, its edits and errors.
-7. **SESSION LOG**: the session's last 8 events: jobs done or failed, task items completed, finished
+7. **BACKGROUND** (only while something runs): each command Claude moved to the background — asked
+   for, `ctrl+b`, or a timeout — with its running time, named by the daily job it runs or just
+   `command`. The header shows `bg 1` meanwhile.
+8. **SESSION LOG**: the session's last 8 events: jobs done or failed, task items completed, finished
    turns, and failed tool calls by tool name.
 
 ### The cache hit rate
@@ -91,7 +94,8 @@ backup=scripts/backup\.sh; report=make report; sync=rsync .*backup
 
 A job counts as done for the day when Claude runs a Bash command matching its pattern (a
 case-insensitive regular expression) and the command succeeds. A matching command that fails marks
-the day red, unless the job succeeds later that day. For a job you ran outside Claude Code, use
+the day red, unless the job succeeds later that day. A command run in the background counts when it
+ends, by its exit code, not when it starts; one that is stopped marks nothing. For a job you ran outside Claude Code, use
 `/deck done <job>`, or `/deck done <job> YYYYMMDD` for an earlier day in the last 30.
 
 Days start at midnight in the `timeZone` option (default `UTC`).
@@ -105,8 +109,8 @@ Set these in the plugin config menu, or in `~/.claude/settings.json` under
 | --- | --- | --- |
 | `jobs` | *(none)* | Daily jobs, `name=pattern; name=pattern` |
 | `timeZone` | `UTC` | IANA time zone whose midnight starts a new day |
-| `reminderHour` | `16` | Hour (0–23) from which the shiba barks about pending jobs; `-1` turns it off |
-| `petName` / `catName` | `SHIBA` / `NEKO` | Names shown in the pet section |
+| `reminderHour` | `16` | Hour (0–23) from which the quokka calls out about pending jobs; `-1` turns it off |
+| `petName` / `catName` | `QUOKKA` / `WOMBAT` | Names shown in the pet section |
 | `motion` | `on` | `off` keeps the pets still |
 | `paneColumns` | `50` | Pane width when docked (32 or more) |
 | `openOnStart` | `true` | Open the pane when a session starts |

@@ -1,4 +1,4 @@
-// Deck: a read-only bookkeeping sidebar. A shiba, your daily jobs, task-list progress, usage and the
+// Deck: a read-only bookkeeping sidebar. A quokka, your daily jobs, task-list progress, usage and the
 // current turn. Forked from Flightdeck by Stephen Casella (MIT).
 //
 // Observe only: every hook passes its event on unchanged, and what it notes is done after the event's
@@ -7,7 +7,7 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register, RenderChildren } from 'claude-code'
 
-import type { Daily, Flash, JobStatus, Life, LogEntry } from '../types'
+import type { Background, Daily, Flash, JobStatus, Life, LogEntry } from '../types'
 import {
   DEFAULT_DAILY,
   DEFAULT_LIFE,
@@ -49,7 +49,7 @@ import {
   wallClock,
   windowsOf,
 } from './core'
-import { DEFAULT_COSTS, addCost, costDelta, mergeCosts, normalizeCosts, weekCost } from './core'
+import { DEFAULT_COSTS, addCost, costDelta, mergeCosts, normalizeCosts, parseTaskEnds, taskOutcome, weekCost } from './core'
 import { addRequest, cacheHitPct, fmtTokens, fmtUsd, shortModel, usdPerHour } from './core'
 import { CAT_FACE, CELL_W, KEEP_DAYS, PET_H, PET_W, LOG_MAX, headerDate, hhmm, pushLog, toolLabel, dayKeyOf, dayLabel, gridDaysFor, monthDay, paceOf, shiftDay, timePct, trackedSpan } from './core'
 import type { Cell, Config, PetState } from './core'
@@ -91,6 +91,31 @@ const spend = atom({ plugin: 'deck', key: 'spend' } as const, DEFAULT_SPEND)
 const costs = atom({ plugin: 'deck', key: 'costs' } as const, DEFAULT_COSTS)
 const costSeen = atom({ plugin: 'deck', key: 'costSeen' } as const, null as number | null)
 const STORE_COSTS = 'costs'
+const bg = atom({ plugin: 'deck', key: 'bg' } as const, {} as Background)
+
+/** A command moved to the background: its jobs count only once it ends. */
+async function startBg($: EngineInterface, id: string, jobs: string[]) {
+  const at = await $.clock.now()
+  await update($, bg, b => ({ ...(b ?? {}), [id]: { jobs, startedAt: at } }))
+  await note($, 'job', `${jobs.length > 0 ? jobs.join(', ') : 'command'} started in background`)
+}
+
+/** A task notification: each background command it reports as ended leaves the list, and its jobs are recorded. */
+async function endBg($: EngineInterface, cfg: Config, text: string) {
+  const running = (await read($, bg)) ?? {}
+  for (const t of parseTaskEnds(text)) {
+    const entry = running[t.id]
+    if (!entry) continue
+    await update($, bg, b => {
+      const { [t.id]: _gone, ...rest } = b ?? {}
+      return rest
+    })
+    const outcome = taskOutcome(t)
+    if (outcome === 'stopped') await note($, 'job', `${entry.jobs.length > 0 ? entry.jobs.join(', ') : 'command'} stopped`)
+    else if (entry.jobs.length === 0) await note($, outcome === 'done' ? 'job' : 'error', `background command ${outcome === 'done' ? 'finished' : '✗ failed'}`)
+    if (outcome !== 'stopped') for (const job of entry.jobs) await noteJob($, cfg, job, outcome)
+  }
+}
 
 /** A new reading of this session's cost: what grew since the last reading goes to today's day in the store. */
 async function noteCost($: EngineInterface, cfg: Config, usd: number) {
@@ -165,6 +190,7 @@ async function resetSession($: EngineInterface) {
   await update($, turn, () => DEFAULT_TURN)
   await update($, flash, () => null)
   await update($, log, () => [])
+  await update($, bg, () => ({}))
 }
 
 function openPane($: EngineInterface, cfg: Config) {
@@ -181,8 +207,12 @@ async function observe($: EngineInterface, cfg: Config, e: Call, ran: Ran) {
   const isOk = didRun && ran.isError !== true
 
   if (e.tool === 'Bash' && didRun && typeof e.command === 'string') {
-    // The command is matched here and dropped: only the job name and outcome are kept.
-    for (const job of jobsIn(e.command, cfg.jobs)) await noteJob($, cfg, job, isOk ? 'done' : 'failed')
+    // The command is matched here and dropped: only the job name and outcome are kept. A command
+    // that went to the background (asked for, ctrl+b or a timeout) has not finished: it counts at its end.
+    const jobs = jobsIn(e.command, cfg.jobs)
+    const bgId = (ran.result as { backgroundTaskId?: unknown } | undefined)?.backgroundTaskId
+    if (isOk && typeof bgId === 'string' && bgId) await startBg($, bgId, jobs)
+    else for (const job of jobs) await noteJob($, cfg, job, isOk ? 'done' : 'failed')
   }
 
   if (isOk && e.tool === 'TodoWrite') {
@@ -248,8 +278,13 @@ export const register: Register = (on, options) => {
         hasUnknownPrice: u?.cost?.hasUnknownPrice === true || x.hasUnknownPrice,
       }
     })
-    // The grid's day and the reminder hour move with the clock, not with events: look again each minute.
-    $.clock.every(60_000, () => $.ui.invalidate('ui.render'))
+    // The grid's day and the reminder hour move with the clock, not with events: look again each minute,
+    // re-reading the store so jobs another session recorded meanwhile show here too.
+    $.clock.every(60_000, () => {
+      void loadHistory($, cfg)
+        .catch(() => undefined)
+        .then(() => $.ui.invalidate('ui.render'))
+    })
     if ((await read($, log)).length === 0) await note($, 'session', 'session started')
     if (cfg.openOnStart) void openPane($, cfg).catch(() => undefined)
     return next(e)
@@ -333,6 +368,14 @@ export const register: Register = (on, options) => {
     return done
   })
 
+  // A background command's end arrives as a task notification: the text is read for task ids, status and exit code only.
+  on('prompt.submit', async ($, e, next) => {
+    if (e.origin?.kind === 'task-notification') await endBg($, cfg, e.text).catch(() => undefined)
+    // Another session may have recorded a job since this one last looked.
+    await loadHistory($, cfg).catch(() => undefined)
+    return next(e)
+  })
+
   on('tool.call', async ($, e, next) => {
     const ran = await next(e)
     // Noted after the result is in hand and not awaited: the call's answer goes back untouched, at once.
@@ -359,7 +402,7 @@ export const register: Register = (on, options) => {
     const els = $.ui.resolve(e)
     const { Box, Text } = els
     const hasClient = 'Client' in els
-    const [d0, l, p, u, t, f, lg, sp0, cs0, now, mono] = await Promise.all([
+    const [d0, l, p, u, t, f, lg, sp0, cs0, bg0, now, mono] = await Promise.all([
       read($, daily),
       read($, life),
       read($, progress),
@@ -369,6 +412,7 @@ export const register: Register = (on, options) => {
       read($, log),
       read($, spend),
       read($, costs),
+      read($, bg),
       $.clock.now(),
       (monoRead ??= $.session
         .version()
@@ -383,6 +427,8 @@ export const register: Register = (on, options) => {
     const pending = pendingToday(d, wall.key, JOBS)
     const state: PetState = petStateOf({ now, turn: tn, flash: f ?? null, usage: us, allDone: JOBS.length > 0 && pending.length === 0, reminder })
     const prog = progressOf(normalize(DEFAULT_PROGRESS, p))
+    const bgList = Object.values(bg0 ?? {}).sort((a, b) => a.startedAt - b.startedAt)
+    const bgLabel = (x: Background[string]) => (x.jobs.length > 0 ? x.jobs.join(', ') : 'command')
     const lvl = levelOf(normalize(DEFAULT_LIFE, l).completed)
     const W = Math.max(24, e.props.bodyColumns)
     const isDock = e.props.placement === 'dock'
@@ -396,6 +442,7 @@ export const register: Register = (on, options) => {
     if (!isDock) {
       const parts = [
         prog ? `tasks ${prog.done}/${prog.total}` : 'no task list',
+        ...(bgList.length > 0 ? [`bg ${bgList.length}`] : []),
         ctxText,
         ...windows.map(w => `${w.label} ${pct(w.l.pct)}`),
       ]
@@ -407,7 +454,7 @@ export const register: Register = (on, options) => {
             <Text dimColor>{` Lv${lvl.level} · ${parts.join(' · ')}`}</Text>
           </Text>
           <Text wrap="truncate" color={reminder.length > 0 ? C.warn : C.dim} bold={reminder.length > 0}>
-            {reminder.length > 0 ? `woof! ${reminder.join(', ')} pending` : todayLine(d, wall.key, JOBS)}
+            {reminder.length > 0 ? `hey! ${reminder.join(', ')} pending` : todayLine(d, wall.key, JOBS)}
           </Text>
         </Box>
       )
@@ -456,7 +503,7 @@ export const register: Register = (on, options) => {
       )
     }
 
-    const animal = (kind: 'shiba' | 'cat', color: string) =>
+    const animal = (kind: 'quokka' | 'wombat', color: string) =>
       hasClient && !faulted.has(faultKey(e.surface, 'pet.tsx')) ? (
         <els.Client
           key={kind}
@@ -466,14 +513,14 @@ export const register: Register = (on, options) => {
           props={{ state, motion: cfg.motion, color, tongue: C.missed, mark: C.warn, mono, kind }}
         />
       ) : (
-        <Text color={color}>{`( ${kind === 'cat' ? CAT_FACE[state] : face} )`}</Text>
+        <Text color={color}>{`( ${kind === 'wombat' ? CAT_FACE[state] : face} )`}</Text>
       )
-    // The cat sits beside the shiba where the box has room for both.
+    // The wombat sits beside the quokka where the box has room for both.
     const hasCat = inner >= 32
     const pet = (
       <Box columnGap={2}>
-        {animal('shiba', C.pet)}
-        {hasCat ? animal('cat', C.cat) : null}
+        {animal('quokka', C.pet)}
+        {hasCat ? animal('wombat', C.cat) : null}
       </Box>
     )
 
@@ -518,6 +565,7 @@ export const register: Register = (on, options) => {
           <Text color={tn.isRunning ? C.pet : C.dim} bold={tn.isRunning}>
             {tn.isRunning ? 'WORKING' : 'IDLE'}
           </Text>
+          {bgList.length > 0 ? <Text color={C.warn}>{` · bg ${bgList.length}`}</Text> : null}
           {JOBS.length > 0 ? <Text dimColor>{' · '}</Text> : null}
           {JOBS.length > 0 ? (
             <Text color={doneToday === JOBS.length ? C.done : reminder.length > 0 ? C.warn : C.text} bold>
@@ -544,7 +592,7 @@ export const register: Register = (on, options) => {
             </Text>
             {reminder.length > 0 ? (
               <Text color={C.warn} bold wrap="truncate">
-                {`woof! ${reminder.join(', ')} ${reminder.length === 1 ? 'is' : 'are'} still pending`}
+                {`hey! ${reminder.join(', ')} ${reminder.length === 1 ? 'is' : 'are'} still pending`}
               </Text>
             ) : null}
           </Box>,
@@ -696,6 +744,29 @@ export const register: Register = (on, options) => {
             </Box>
           ),
         )}
+
+        {bgList.length === 0
+          ? null
+          : section(
+              'bg',
+              'BACKGROUND',
+              C.warn,
+              `${bgList.length} running`,
+              <Box flexDirection="column">
+                {bgList.map((x, i) => (
+                  <Box key={`bg${i}`} overflow="hidden">
+                    <Text color={C.warn} wrap="truncate">{`⟳ ${bgLabel(x)}`.slice(0, Math.max(8, inner - 9)).padEnd(Math.max(8, inner - 9))}</Text>
+                    <Box flexShrink={0}>
+                      {hasClient && !faulted.has(faultKey(e.surface, 'elapsed.tsx')) ? (
+                        <els.Client key={`bgt${i}`} module="./elapsed.tsx" props={{ since: x.startedAt, now, endAt: null, color: C.text }} />
+                      ) : (
+                        <Text>{fmtDuration(now - x.startedAt)}</Text>
+                      )}
+                    </Box>
+                  </Box>
+                ))}
+              </Box>,
+            )}
 
         {section(
           'log',

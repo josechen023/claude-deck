@@ -1,4 +1,4 @@
-// The shiba (or the cat) in half-block pixel art, animated on the surface's own frame clock (as Flightdeck's rail.tsx draws its packets):
+// The quokka (or the wombat) in half-block pixel art, animated on the surface's own frame clock (as Flightdeck's rail.tsx draws its packets):
 // only this region redraws, the pane does not. With `motion` off it rests on its first frame.
 import type { ClientModule } from 'claude-code'
 
@@ -12,8 +12,8 @@ type Props = {
   tongue: string
   mark: string
   mono: boolean
-  /** Which animal to draw; the shiba when absent. */
-  kind?: 'shiba' | 'cat'
+  /** Which animal to draw; the quokka when absent. */
+  kind?: 'quokka' | 'wombat'
 }
 
 type Ref = { tick: number; state: PetState; motion: boolean; stop: (() => void) | null }
@@ -37,7 +37,7 @@ const Pet: ClientModule<Props, State> = (props, surface) => {
     surface.setState({ ref })
   }
 
-  const frames = (props.kind === 'cat' ? CAT_FRAMES : FRAMES)[props.state]
+  const frames = (props.kind === 'wombat' ? CAT_FRAMES : FRAMES)[props.state]
   const frame = (props.motion && ref.tick % 2 === 1 ? frames[1] : frames[0])
   const face = props.mono ? { mono: true } : {}
   const colorOf = (role?: string) => (role === 'tongue' ? props.tongue : role === 'mark' ? props.mark : props.color)
